@@ -1,5 +1,7 @@
 //nano1XmitterjoyStck3OLED
 //Use of Joystick to read speed and steering values
+//Added 3 Pushbutton switches to inputs d5,d6, and d7... 
+//used 10 kOhms resistos as pulldowns.
 
 #include <SPI.h>
 #include <nRF24L01.h>
@@ -11,7 +13,7 @@
 #define POT2_PIN A1  // Y:Second potentiometer connected to A1
 
 RF24 radio(CE_PIN, CSN_PIN);
-const byte address[6] = "00001";  // Address for communication
+const byte address[6] = "00001";  // Address for communication note:6th element is a null char
 
 struct DataPacket {
     uint16_t pot1Value;  // First potentiometer (0-1023)

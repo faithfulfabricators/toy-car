@@ -40,11 +40,11 @@
 // GND	      Ground	                                          GND all grounds must be common
 // 5V OUT	    Regulated 5V output	                            Not needed (Nano already powered)
 // IN1	      Motor A Direction                                 D4	
-// IN2	      Motor A Direction                                 D8	
+// IN2	      Motor A Direction                                 D8//D5	
 // IN3	      Motor B Direction                                 D6	
 // IN4	      Motor B Direction                                 D7	
 // ENA	      Motor A Speed                                     D3 (PWM)	
-// ENB	      Motor B Speed                                     D5 (PWM)	
+// ENB	      Motor B Speed                                     D5//D8 (PWM)	
 //####################Battery Module###################################################################
 //Need Three 3.7V Li-ion rechargeable batteries, providing total of 11V, connected in series.
 //Need 3-Battery holder and charger.
@@ -73,11 +73,11 @@
 
 // L298N Motor Driver Pins
 #define IN1 4
-#define IN2 8
+#define IN2 8//5
 #define IN3 6
 #define IN4 7
 #define ENA 3  // Left Motor PWM
-#define ENB 5 // Right Motor PWM
+#define ENB 5//8 // Right Motor PWM
 //Speed Multiplier
 float speedCntl=.5;
 //Declare pins to be used by functions printChannelXState
@@ -142,14 +142,37 @@ void printChannel3State(uint8_t states) {
 //The PWM signal on ENA/ENB determines the motor speed
 //////////////////////////////////////////
 void controlMotors(int speed, int steering) {
-    int leftSpeed = 0, rightSpeed = 0;
+    int leftSpeed, rightSpeed;
+    bool spinMode = false;
 
-    if (speed > 0) { // Forward
+    // check for spin mode
+    if (speed = 0 && steering < 75 || steering > 105)
+        spinMode = true;
+
+
+    // set motor direction
+    if (spinMode) {
+        if(steering < 75){
+            // spin left (right forward, left backward)
+            digitalWrite(IN1, LOW);
+            digitalWrite(IN2, HIGH);
+            digitalWrite(IN3, HIGH);
+            digitalWrite(IN4, LOW);
+        }
+        else{
+            // spin right (left forward, right backward)
+            digitalWrite(IN1, HIGH);
+            digitalWrite(IN2, LOW);
+            digitalWrite(IN3, LOW);
+            digitalWrite(IN4, HIGH);
+        }
+    }
+    else if (speed > 0) { // all Forward
         digitalWrite(IN1, HIGH);
         digitalWrite(IN2, LOW);
         digitalWrite(IN3, HIGH);
         digitalWrite(IN4, LOW);
-    } else if (speed < 0) { // Reverse
+    } else if (speed < 0) { // all Reverse
         digitalWrite(IN1, LOW);
         digitalWrite(IN2, HIGH);
         digitalWrite(IN3, LOW);
@@ -161,19 +184,20 @@ void controlMotors(int speed, int steering) {
         digitalWrite(IN4, LOW);
     }
 
-    // Adjust speed based on steering
-    //leftSpeed = speed - map(steering, 0, 180, -50, 50);
-    //rightSpeed = speed + map(steering, 0, 180, -50, 50);
-    //leftSpeed = speed - map(steering, 0, 180, -200, 200);
-    //rightSpeed = speed + map(steering, 0, 180, -200, 200);
-    //leftSpeed = speed - map(steering, 0, 180, -150, 150);
-    //rightSpeed = speed + map(steering, 0, 180, -150, 1500);
-    leftSpeed = speed - map(steering, 0, 180, -125, 125);//these settings appear to be the max tolerance for turns
-    rightSpeed = speed + map(steering, 0, 180, -125, 125);
-
-    leftSpeed = (constrain(leftSpeed, -255, 255)*speedCntl);//the constrain ensures the motor operation within min/max range
-    rightSpeed = (constrain(rightSpeed, -255, 255)*speedCntl);
-
+    if(spinMode){
+        leftSpeed = map(steering, 0, 180, -255, 255);
+        rightSpeed = map(steering, 0, 180, -255, 255);
+    }
+    else{
+        // Adjust speed based on steering
+        //leftSpeed = speed - map(steering, 0, 180, -50, 50);
+        //rightSpeed = speed + map(steering, 0, 180, -50, 50);
+        leftSpeed = speed - map(steering, 0, 180, -125, 125);
+        rightSpeed = speed + map(steering, 0, 180, -125, 125);
+    
+        leftSpeed = (constrain(leftSpeed, -255, 255)*speedCntl);
+        rightSpeed = (constrain(rightSpeed, -255, 255)*speedCntl);
+    }
     analogWrite(ENA, abs(leftSpeed));  // Set left motor speed
     analogWrite(ENB, abs(rightSpeed)); // Set right motor speed
 }
