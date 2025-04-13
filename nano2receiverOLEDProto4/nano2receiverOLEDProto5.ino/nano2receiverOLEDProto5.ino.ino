@@ -146,7 +146,9 @@ void controlMotors(int speed, int steering) {
     bool spinMode = false;
 
     // check for spin mode
-    if (speed = 0 && steering < 75 || steering > 105)
+    // if (speed = 0 && steering < 75 || steering > 105)
+    //     spinMode = true;
+    if (speed == 0 && (steering < 75 || steering > 105))
         spinMode = true;
 
 
