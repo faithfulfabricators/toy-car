@@ -138,6 +138,8 @@ void printChannelStates(uint8_t states) {
 void controlMotors(int speed, int steering) {
     int leftSpeed=0, rightSpeed=0;
     bool spinMode = false;
+    bool forwards = false;
+    bool backwards = false;
 
     // check for spin mode
     if (speed == 0 && (steering < 75 || steering > 105))
@@ -165,11 +167,13 @@ void controlMotors(int speed, int steering) {
         digitalWrite(IN2, LOW);
         digitalWrite(IN3, HIGH);
         digitalWrite(IN4, LOW);
+        forwards = true;
     } else if (speed < 0) { // all Reverse
         digitalWrite(IN1, LOW);
         digitalWrite(IN2, HIGH);
         digitalWrite(IN3, LOW);
         digitalWrite(IN4, HIGH);
+        backwards = true;
     } else { // Stop
         digitalWrite(IN1, LOW);
         digitalWrite(IN2, LOW);
@@ -183,10 +187,14 @@ void controlMotors(int speed, int steering) {
     }
     else{
         // Adjust speed based on steering
-        //leftSpeed = speed - map(steering, 0, 180, -50, 50);
-        //rightSpeed = speed + map(steering, 0, 180, -50, 50);
-        leftSpeed = speed - map(steering, 0, 180, -125, 125);
-        rightSpeed = speed + map(steering, 0, 180, -125, 125);
+        if(forwards){
+            leftSpeed = speed - map(steering, 0, 180, -125, 125);
+            rightSpeed = speed + map(steering, 0, 180, -125, 125);  
+        }
+        else if(backwards){
+            leftSpeed = speed + map(steering, 0, 180, -125, 125);
+            rightSpeed = speed - map(steering, 0, 180, -125, 125);  
+        }
     
         leftSpeed = (constrain(leftSpeed, -255, 255)*speedCntl);
         rightSpeed = (constrain(rightSpeed, -255, 255)*speedCntl);
