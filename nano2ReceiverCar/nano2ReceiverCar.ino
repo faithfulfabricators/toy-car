@@ -46,6 +46,7 @@
 //################################################################################
 //5/13/2025 Added address lock using dip encode switches for rcvvr/xmitter match
 //assigned A4 and A5
+//5/24/2025 address polling added to check if dp sw config is changed
 //################################################################################
 
 #include <SPI.h>
@@ -297,7 +298,7 @@ void loop() {
     if (cycleCounter % 10 == 0) {  // Run every other cycle
         altSetup();
     }
-      
+
     if (radio.available()) {
         DataPacket data;
         radio.read(&data, sizeof(data));
