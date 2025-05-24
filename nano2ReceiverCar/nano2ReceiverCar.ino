@@ -263,7 +263,41 @@ void setup() {
     pinMode(ENB, OUTPUT);
 }
 
+//############Address Polling##################################
+void altSetup() {
+    int switch1State = digitalRead(switch1Pin);
+    int switch2State = digitalRead(switch2Pin);
+
+    int encodedValue = (!switch1State << 1) | (!switch2State);
+    byte newAddSel[5]; // Temporary variable for new address selection
+
+    switch (encodedValue) {
+      case 0: memcpy(newAddSel, address1, sizeof(address1)); break;
+      case 1: memcpy(newAddSel, address2, sizeof(address2)); break;
+      case 2: memcpy(newAddSel, address3, sizeof(address3)); break;
+      case 3: memcpy(newAddSel, address4, sizeof(address4)); break;
+    }
+
+    if (memcmp(newAddSel, address, sizeof(address)) != 0) {  // Only update if different
+        memcpy(address, newAddSel, sizeof(address));  // Apply new address
+        radio.openWritingPipe(address);  // Update address for communication
+        Serial.print("Updated Address: ");
+        for (int i = 0; i < 5; i++) Serial.print((char)address[i]);
+        Serial.println();
+    }
+}
+
+int cycleCounter = 0;
+
+//###############################################################
+
 void loop() {
+   cycleCounter++;
+
+    if (cycleCounter % 10 == 0) {  // Run every other cycle
+        altSetup();
+    }
+      
     if (radio.available()) {
         DataPacket data;
         radio.read(&data, sizeof(data));
