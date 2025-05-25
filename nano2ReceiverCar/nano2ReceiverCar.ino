@@ -145,6 +145,11 @@ void controlMotors(int speed, int steering) {
     // check for spin mode
     if (speed == 0 && (steering < 75 || steering > 105))
         spinMode = true;
+        
+    // Invert steering when moving in reverse
+    if (speed < 0) { 
+        steering = 180 - steering;  // Correct steering behavior in Quadrants 3 and 4
+    }
 
     // set motor direction
     if (spinMode) {
