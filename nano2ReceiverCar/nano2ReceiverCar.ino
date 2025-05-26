@@ -46,7 +46,9 @@
 //################################################################################
 //5/13/2025 Added address lock using dip encode switches for rcvvr/xmitter match
 //assigned A4 and A5
-//5/24/2025 address polling added to check if dp sw config is changed
+//5/24/2025 Address polling added to check if dp sw config is changed
+//5/25/2025 Added statement in motor control function to address reverse motion issues
+// while car is in reverse motion (3rd and 4th Quadrants)
 //################################################################################
 
 #include <SPI.h>
