@@ -41,7 +41,7 @@
 //################################################################################
 //5/13/2025 Added address lock using dip encode switches for rcvvr/xmitter match
 //assigned A3 and A4
-//Address Polling Tested
+//Address Polling Tested on all switch positions: 4 addresses
 //################################################################################
 #include <SPI.h>
 #include <nRF24L01.h>
