@@ -39,9 +39,11 @@
 //                       |
 //                      GND
 //################################################################################
-//5/13/2025 Added address lock using dip encode switches for rcvvr/xmitter match
+//5/13/2025 Added address lock using dip encode switches for rcvvr
+//xmitter match
 //assigned A3 and A4
 //Address Polling Tested on all switch positions: 4 addresses
+//6/13/2025 commented out, address locking and added timestamp monitor
 //################################################################################
 #include <SPI.h>
 #include <nRF24L01.h>
@@ -72,6 +74,7 @@ struct DataPacket {
     uint16_t pot1Value;  // First potentiometer (0-1023)
     uint16_t pot2Value;  // Second potentiometer (0-1023)
     uint8_t states;      // variable to hold switch states
+    unsigned long timestamp;  // Added timestamp field
 };
 
 // Pin definitions for digital channels(Push Buttons)
@@ -127,49 +130,57 @@ void setup() {
     pinMode(channel2_pin, INPUT);
     pinMode(channel3_pin, INPUT);
 
-    
     radio.begin();
-    
+    radio.setPALevel(RF24_PA_HIGH);//Max Xmit Power
+    radio.setDataRate(RF24_250KBPS); // Lower dat rate for optimized range
+    radio.setChannel(76);
     radio.openWritingPipe(address);
-    radio.setPALevel(RF24_PA_LOW);
+    radio.setRetries(2, 10);
     radio.stopListening(); // Set as transmitter
+
 }
 
 //############Address Polling##################################
-void altSetup() {
-    int switch1State = digitalRead(switch1Pin);
-    int switch2State = digitalRead(switch2Pin);
+// void altSetup() {
+//     int switch1State = digitalRead(switch1Pin);
+//     int switch2State = digitalRead(switch2Pin);
 
-    int encodedValue = (!switch1State << 1) | (!switch2State);
-    byte newAddSel[5]; // Temporary variable for new address selection
+//     int encodedValue = (!switch1State << 1) | (!switch2State);
+//     byte newAddSel[5]; // Temporary variable for new address selection
 
-    switch (encodedValue) {
-      case 0: memcpy(newAddSel, address1, sizeof(address1)); break;
-      case 1: memcpy(newAddSel, address2, sizeof(address2)); break;
-      case 2: memcpy(newAddSel, address3, sizeof(address3)); break;
-      case 3: memcpy(newAddSel, address4, sizeof(address4)); break;
-    }
+//     switch (encodedValue) {
+//       case 0: memcpy(newAddSel, address1, sizeof(address1)); break;
+//       case 1: memcpy(newAddSel, address2, sizeof(address2)); break;
+//       case 2: memcpy(newAddSel, address3, sizeof(address3)); break;
+//       case 3: memcpy(newAddSel, address4, sizeof(address4)); break;
+//     }
 
-    if (memcmp(newAddSel, address, sizeof(address)) != 0) {  // Only update if different
-        memcpy(address, newAddSel, sizeof(address));  // Apply new address
-        radio.openWritingPipe(address);  // Update address for communication
-        Serial.print("Updated Address: ");
-        for (int i = 0; i < 5; i++) Serial.print((char)address[i]);
-        Serial.println();
-    }
-}
+//     if (memcmp(newAddSel, address, sizeof(address)) != 0) {  // Only update if different
+//         memcpy(address, newAddSel, sizeof(address));  // Apply new address
+//         radio.openWritingPipe(address);  // Update address for communication
+//         Serial.print("Updated Address: ");
+//         for (int i = 0; i < 5; i++) Serial.print((char)address[i]);
+//         Serial.println();
+//     }
+// }
 
 int cycleCounter = 0;
 
 //###############################################################
 void loop() {
-   cycleCounter++;
+  //  cycleCounter++;
 
-    if (cycleCounter % 10 == 0) {  // Run every other cycle
-        altSetup();
-    }
+  //   if (cycleCounter % 10 == 0) {  // Run every other cycle
+  //       altSetup();
+  //   }
+   
+   unsigned long sentTime = millis();
+   Serial.print("Sent at: ");
+   Serial.println(sentTime);
 
     DataPacket data;
+    // Include timestamp in the packet
+    data.timestamp = sentTime;
     // Read the state of each digital channel
     uint8_t channel1_state = digitalRead(channel1_pin);
     uint8_t channel2_state = digitalRead(channel2_pin);
@@ -188,5 +199,5 @@ void loop() {
     Serial.println(data.pot2Value);
 
     radio.write(&data, sizeof(DataPacket));  // Send both values
-    delay(200);
+    delay(30);//200
 }

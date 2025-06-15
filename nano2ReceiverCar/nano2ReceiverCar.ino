@@ -49,6 +49,7 @@
 //5/24/2025 Address polling added to check if dp sw config is changed
 //5/25/2025 Added statement in motor control function to address reverse motion issues
 // while car is in reverse motion (3rd and 4th Quadrants)
+//6/13/2025 commented out, address locking and added timestamp monitor
 //################################################################################
 
 #include <SPI.h>
@@ -68,7 +69,7 @@
 #define IN4 7
 #define ENA 3// Left Motor PWM
 #define ENB 5// Right Motor PWM
-
+unsigned long initialTime;
 //Speed Multiplier
 float speedCntl=.5;
 //Declare pins to be used by functions printChannelXState
@@ -93,6 +94,7 @@ struct DataPacket {
     uint16_t joyX; // Joystick X-axis, using 2 bytes
     uint16_t joyY; // Joystick Y-axis, using 2 bytes
     uint8_t states; // uint8_t variable to hold switch states
+    unsigned long timestamp;//to calculate latency
 };
 
 const int ledPins[] = {ledPin1, ledPin2, ledPin3}; // Array of LED pins
@@ -216,6 +218,8 @@ void setup() {
     pinMode(switch2Pin, INPUT_PULLUP);
     Serial.begin(9600);
 
+    initialTime = millis(); // Get the current timestamp
+
     int switch1State = digitalRead(switch1Pin); // Read state of switch 1
     int switch2State = digitalRead(switch2Pin); // Read state of switch 2
 
@@ -253,8 +257,9 @@ void setup() {
     Serial.print("Selected Address: ");
     Serial.println(formattedAddress);  // Prints as "00001", "00002", etc.
     radio.begin();
-    radio.openReadingPipe(0, address);
-    radio.setPALevel(RF24_PA_LOW);
+    radio.openReadingPipe(1, address);
+    radio.setPALevel(RF24_PA_HIGH);
+    radio.setDataRate(RF24_250KBPS);
     radio.startListening();
 
     //Initialize functions led pins
@@ -271,44 +276,38 @@ void setup() {
     pinMode(ENB, OUTPUT);
 }
 
-//############Address Polling##################################
-void altSetup() {
-    int switch1State = digitalRead(switch1Pin);
-    int switch2State = digitalRead(switch2Pin);
-
-    int encodedValue = (!switch1State << 1) | (!switch2State);
-    byte newAddSel[5]; // Temporary variable for new address selection
-
-    switch (encodedValue) {
-      case 0: memcpy(newAddSel, address1, sizeof(address1)); break;
-      case 1: memcpy(newAddSel, address2, sizeof(address2)); break;
-      case 2: memcpy(newAddSel, address3, sizeof(address3)); break;
-      case 3: memcpy(newAddSel, address4, sizeof(address4)); break;
-    }
-
-    if (memcmp(newAddSel, address, sizeof(address)) != 0) {  // Only update if different
-        memcpy(address, newAddSel, sizeof(address));  // Apply new address
-        radio.openWritingPipe(address);  // Update address for communication
-        Serial.print("Updated Address: ");
-        for (int i = 0; i < 5; i++) Serial.print((char)address[i]);
-        Serial.println();
-    }
-}
-
 int cycleCounter = 0;
 
 //###############################################################
 
 void loop() {
-   cycleCounter++;
+  cycleCounter++;
 
-    if (cycleCounter % 10 == 0) {  // Run every other cycle
-        altSetup();
-    }
-
+  unsigned long receivedTime;
     if (radio.available()) {
         DataPacket data;
+        receivedTime = millis(); // Get the current timestamp
+        
         radio.read(&data, sizeof(data));
+        Serial.println("Packet received!");
+        unsigned long relativeTimestamp = data.timestamp % 1000; // Keep within 0-999
+        unsigned long receivedRelative = receivedTime % 1000;
+        unsigned long latency;
+
+        if (receivedRelative >= relativeTimestamp) {
+            latency = receivedRelative - relativeTimestamp;
+        } else {
+            latency = (1000 - relativeTimestamp) + receivedRelative;
+        }
+        //##################################
+        Serial.print("Relative Timestamp: ");
+        Serial.println(relativeTimestamp);
+        Serial.print("Received Relative: ");
+        Serial.println(receivedRelative);
+        //###################################### 
+        // Core debug prints only
+        Serial.print("Latency: ");
+        Serial.println(latency);
 
         // Call functions to print the state of each channel
         printChannelStates(data.states);    
@@ -350,6 +349,11 @@ void loop() {
             prevSteering = steering;
             prevSpeed = speed;
             lastUpdateTime = millis();  // Update timer
+
         }
     }
+  long elapseTime = receivedTime - initialTime;
+  long avgCycleTime = elapseTime/cycleCounter;
+  Serial.print("Avg Cycle Time: ");
+  Serial.println(avgCycleTime);  
 }
